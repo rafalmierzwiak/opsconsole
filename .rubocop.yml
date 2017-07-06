@@ -1,0 +1,19 @@
+Metrics/AbcSize:
+  Max: 18
+
+Metrics/BlockLength:
+  Max: 64
+
+Metrics/ClassLength:
+  CountComments: false
+  Max: 256
+
+Metrics/LineLength:
+  Max: 128
+
+Metrics/MethodLength:
+  CountComments: false
+  Max: 128
+
+Metrics/ParameterLists:
+  Max: 8

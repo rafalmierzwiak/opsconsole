@@ -1,0 +1,13 @@
+require: rubocop-rspec
+
+RSpec/ExampleLength:
+  Max: 128
+
+RSpec/MultipleExpectations:
+  Max: 32
+
+Metrics/BlockLength:
+  Max: 128
+
+Metrics/LineLength:
+  Max: 128

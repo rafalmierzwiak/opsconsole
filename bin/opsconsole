@@ -1,0 +1,159 @@
+#!/usr/bin/env ruby
+
+require 'gli'
+require 'opsconsole'
+
+include GLI::App
+
+program_desc 'Remote terminal multiplexer'
+program_long_desc <<-EOS
+  Tool to simultaneously access and interact with multiple remote machines.
+EOS
+version Opsconsole::VERSION
+
+subcommand_option_handling :normal
+arguments :strict
+
+desc 'Attach console'
+long_desc <<-EOS
+  If session not provided console active session will be attached.
+
+  If window not provided console active window will be attached.
+EOS
+
+command :attach do |c|
+  c.flag :s,
+         :session,
+         desc: 'Session name'
+  c.flag :w,
+         :window,
+         desc: 'Window name'
+
+  c.action do |_global, options, _args|
+    Console.attach(session: options.fetch(:session),
+                   window: options.fetch(:window))
+  end
+end
+
+desc 'Create console'
+long_desc <<-EOS
+  Console consists of sessions, windows and panes. Remote terminals are presented
+  in panes, e.g. single pane shows output of a command running on a remote host.
+  Multiple panes are organised in windows, this way operator is able to observe
+  multiple terminals on one screen, also may organize certain commands and hosts
+  into groups (e.g. a window called 'sysperf' showing 'iostat' and 'vmstat'
+  commands running on database servers, another window called 'netperf' showing
+  'curl' and 'ping' commands running on web servers. Multiple windows are
+  organized in sessions, this way operator may further organize and separate panes
+  based on custom criteria, say keep 'staging' and 'production' session.
+
+  Console organises hosts in columns, commands in rows. Terminals are displayed on
+  a single screen hence considerable amount of screen real estate is required for
+  the tool to be usable.
+
+  tmux controls the console and the terminals, console can be detached and later
+  re-attached at will. Terminals presented within current window can be accessed
+  simultaneously. Refer to tmux documentation in regards to its configuration,
+  in particular useful key bindings.
+
+  Upon creation console connects to remote server(s) via SSH using operators
+  credentials and executes specified command(s). SSH connects to remote servers
+  as $USER, that is unless different username is requested via $SSH_USER or
+  tool's --user option. Make sure SSH keys are in place.
+
+  Command may be anything that works with:
+
+  tmux new-window ssh host '<command>'
+
+  for example:
+
+  -c 'htop'
+
+  -c 'ping google.com'
+
+  -c 'while true; do echo $(date) $(nc -zw 2 google.com 80); sleep 1; done'
+EOS
+command :create do |c|
+  c.flag :s,
+         :session,
+         desc: 'Session name',
+         default_value: 'opsconsole'
+  c.flag :w,
+         :window,
+         desc: 'Window name',
+         default_value: 'default'
+  c.flag :h,
+         :host,
+         desc: 'Host name',
+         required: true,
+         multiple: true
+  c.flag :c,
+         :command,
+         desc: 'Command',
+         required: true,
+         multiple: true
+  c.flag :u,
+         :user,
+         desc: 'Username',
+         default_value: ENV['SSH_USER'] ? ENV['SSH_USER'] : ENV['USER']
+  c.switch :synchronize,
+           desc: 'Synchronize panes',
+           default_value: true
+  c.switch :attach,
+           desc: 'Attach to console',
+           default_value: true
+
+  c.action do |_global, options, _args|
+    Console.create(session: options.fetch(:session),
+                   window: options.fetch(:window),
+                   user: options.fetch(:user),
+                   hosts: options.fetch(:host, []),
+                   commands: options.fetch(:command, []),
+                   synchronize: options.fetch(:synchronize))
+    if options.fetch(:attach)
+      Console.attach(session: options.fetch(:session),
+                     window: options.fetch(:window))
+    end
+  end
+end
+
+desc 'Destroy console'
+long_desc <<-EOS
+  If window name provided all panes of the given window will be destroyed.
+
+  If session name provided all windows and panes of the given session will be
+  destroyed.
+EOS
+
+command :destroy do |c|
+  c.flag :s,
+         :session,
+         desc: 'Session name'
+  c.flag :w,
+         :window,
+         desc: 'Window name'
+
+  c.action do |_global, options, _args|
+    Console.destroy(session: options.fetch(:session),
+                    window: options.fetch(:window))
+  end
+end
+
+desc 'List consoles panes'
+long_desc <<-EOS
+  List columns contain the following information:
+
+  Session name, Window name, Window active, Pane index, Pane active
+EOS
+command :list do |c|
+  c.action do |_global, _options, _args|
+    Console.list
+  end
+end
+
+unless system('which', 'tmux', out: File::NULL, err: File::NULL)
+  STDERR.puts('Please install tmux, opsconsole depends on it.')
+  exit 1
+end
+
+exit run(ARGV)
