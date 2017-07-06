@@ -1,3 +1,3 @@
 module Opsconsole
-  VERSION = '0.1.0'.freeze
+  VERSION = '0.1.5'.freeze
 end
